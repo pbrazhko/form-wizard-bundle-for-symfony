@@ -1,0 +1,16 @@
+{
+  "name": "bp/form_wizard_bundle",
+  "description": "Form wizard bundle for Symfony 2",
+  "require": {
+    "php": ">=5.3.0",
+    "symfony/monolog-bridge": "~2.3",
+    "symfony/dependency-injection": "~2.3",
+    "symfony/config": "~2.3",
+    "symfony/http-kernel": "~2.3"
+  },
+  "minimum-stability": "dev",
+  "autoload": {
+    "psr-0": {"CMS\\FormWizardBundle": ""}
+  },
+  "target-dir": "CMS/FormWizardBundle"
+}

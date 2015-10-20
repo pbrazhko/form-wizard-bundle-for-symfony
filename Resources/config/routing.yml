@@ -1,0 +1,3 @@
+form_wizard_homepage:
+    path:     /hello/{name}
+    defaults: { _controller: FormWizardBundle:Default:index }
