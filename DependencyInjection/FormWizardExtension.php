@@ -41,7 +41,7 @@ class FormWizardExtension extends Extension
             $wizardConfigurationDefinition->setPublic(false);
 
             $wizardDefinition = new Definition(Wizard::class, [$wizardConfigurationDefinition]);
-            $wizardDefinition->addMethodCall('setFormBuilder', [new Reference('form.factory')]);
+            $wizardDefinition->addMethodCall('setFormFactory', [new Reference('form.factory')]);
 
             $container->setDefinition('cms.form_wizard.' . $wizard, $wizardDefinition);
         }

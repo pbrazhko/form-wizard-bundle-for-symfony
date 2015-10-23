@@ -49,6 +49,65 @@ class WizardConfiguration
     }
 
     /**
+     * @return mixed
+     */
+    public function getFirstStep()
+    {
+        return reset($this->steps);
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getLastStep()
+    {
+        return end($this->steps);
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getFirstStepName()
+    {
+        $nameSteps = array_keys($this->steps);
+
+        return reset($nameSteps);
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getLastStepName()
+    {
+        $nameSteps = array_keys($this->steps);
+
+        return end($nameSteps);
+    }
+
+    /**
+     * @param $currentStep
+     * @return mixed|null
+     */
+    public function getNextStepName($currentStep)
+    {
+        if (null === $currentStep) {
+            $currentStep = $this->getFirstStepName();
+        }
+
+        $nextStep = null;
+
+        $nameSteps = array_keys($this->steps);
+        foreach ($nameSteps as $name) {
+            if ($name == $currentStep) {
+                $nextStep = next($nameSteps);
+                break;
+            }
+        }
+
+        return $nextStep;
+    }
+
+    /**
      * @param array $steps
      * @return $this
      */

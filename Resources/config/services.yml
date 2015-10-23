@@ -1,7 +1,9 @@
 parameters:
-#    form_wizard.example.class: CMS\FormWizardBundle\Example
+    form_wizard.twig.class: CMS\FormWizardBundle\Twig\FormWizardExtension
 
 services:
-#    form_wizard.example:
-#        class: %form_wizard.example.class%
-#        arguments: [@service_id, "plain_value", %parameter%]
+    cms.form_wizard.twig:
+        class: %form_wizard.twig.class%
+        arguments: [@service_container]
+        tags:
+          - { name: twig.extension}
