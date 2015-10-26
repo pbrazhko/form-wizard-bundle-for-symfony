@@ -11,6 +11,7 @@ namespace CMS\FormWizardBundle;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
+use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\FormFactory;
 
 class Wizard
@@ -91,11 +92,24 @@ class Wizard
     {
         $step = $this->configuration->getFirstStep();
 
-        if (null !== $stepName) {
-            $step = $this->configuration->getStep($stepName);
+        if (null === $stepName) {
+            $stepName = $this->configuration->getFirstStepName();
         }
 
-        return $this->formFactory->create(new $step['type'], $data, $options);
+        $form = $this->formFactory->create(new $step['type'], $data, $options);
+
+        $formConfig = $form->getConfig();
+
+        if(null === $data && (null !== $dataClass = $formConfig->getDataClass())){
+            /** @var AbstractType $formType */
+            $data = $this->dataStorage->getStepData($stepName, new $dataClass);
+
+            $this->flusher->persist($data);
+
+            $form->setData($data);
+        }
+
+        return $form;
     }
 
     /**
@@ -125,16 +139,23 @@ class Wizard
     /**
      * @param null $stepName
      * @param $data
+     * @return $this
      */
     public function flush($stepName = null, $data)
     {
-        $step = $this->configuration->getStep($stepName);
+        if(null === $stepName){
+            $stepName = $this->configuration->getFirstStepName();
+        }
+
+        $this->flusher->persist($data);
 
         if ($this->configuration->getPersist() == WizardConfiguration::PERSIST_TYPE_POST_PRESET) {
             $this->flusher->flush($data);
         } else {
-
+            $this->dataStorage->setStepData($stepName, $data);
         }
+
+        return $this;
     }
 
     /**
@@ -144,9 +165,18 @@ class Wizard
     public function getNextStepName($currentStep)
     {
         $nextStep = $this->configuration->getNextStep($currentStep);
+        $nextStepName = $this->configuration->getNextStepName($currentStep);
+
+        $values = [];
+
+        foreach($this->configuration->getSteps() as $name => $parameters){
+            $values[$name] = $this->dataStorage->getStepData($name);
+        }
 
         if (isset($nextStep['condition'])) {
-            $result = $this->expressionLanguage->evaluate($nextStep['condition'], $this->dataStorage);
+            if(!$this->expressionLanguage->evaluate($nextStep['condition'], $values)){
+                return $this->getNextStepName($nextStepName);
+            }
         }
 
         return $this->configuration->getNextStepName($currentStep);

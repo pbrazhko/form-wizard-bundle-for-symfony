@@ -153,6 +153,6 @@ class WizardConfiguration
 
     public function getHash()
     {
-        return spl_object_hash($this);
+        return md5(serialize($this));
     }
 }

@@ -20,6 +20,8 @@ class WizardDataStorage
      */
     private $session;
 
+    private $dataHashName;
+
     /**
      * WizardDataStorage constructor.
      * @param $dataHashName
@@ -27,8 +29,7 @@ class WizardDataStorage
     public function __construct($dataHashName)
     {
         $this->session = new Session();
-
-        $this->data = $this->session->get($dataHashName, array());
+        $this->dataHashName = $dataHashName;
     }
 
     /**
@@ -36,6 +37,10 @@ class WizardDataStorage
      */
     public function getData()
     {
+        if(null === $this->data){
+            $this->data = $this->session->get($this->dataHashName, []);
+        }
+
         return $this->data;
     }
 
@@ -48,6 +53,34 @@ class WizardDataStorage
         $this->data = $data;
 
         return $this;
+    }
+
+    /**
+     * @param $stepName
+     * @param $data
+     * @return $this
+     */
+    public function setStepData($stepName, $data){
+        $this->data[$stepName] = is_object($data)? serialize($data) : $data;
+
+        $this->saveData();
+
+        return $this;
+    }
+
+    /**
+     * @param $stepName
+     * @param null $default
+     * @return array
+     */
+    public function getStepData($stepName, $default = null){
+        $data = $this->getData();
+
+        if(isset($data[$stepName])){
+            return unserialize($data[$stepName]);
+        }
+
+        return $default;
     }
 
     /**
@@ -67,5 +100,12 @@ class WizardDataStorage
         $this->session = $session;
 
         return $this;
+    }
+
+    /**
+     * Saving data to session
+     */
+    private function saveData(){
+        $this->session->set($this->dataHashName, $this->data);
     }
 }
