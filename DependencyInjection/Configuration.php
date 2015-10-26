@@ -2,6 +2,7 @@
 
 namespace CMS\FormWizardBundle\DependencyInjection;
 
+use CMS\FormWizardBundle\WizardConfiguration;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 
@@ -29,8 +30,11 @@ class Configuration implements ConfigurationInterface
             ->prototype('array')
             ->children()
             ->enumNode('persist')
-            ->values(array('stepByStep', 'postPreset'))
-            ->defaultValue('stepByStep')
+            ->values(array(WizardConfiguration::PERSIST_TYPE_STEP_BY_STEP, WizardConfiguration::PERSIST_TYPE_POST_PRESET))
+            ->defaultValue(WizardConfiguration::PERSIST_TYPE_STEP_BY_STEP)
+            ->end()
+            ->scalarNode('flusher')
+            ->defaultValue('@doctrine.orm.entity_manager')
             ->end()
             ->arrayNode('steps')
             ->useAttributeAsKey('name')

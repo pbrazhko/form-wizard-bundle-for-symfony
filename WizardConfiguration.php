@@ -11,6 +11,9 @@ namespace CMS\FormWizardBundle;
 
 class WizardConfiguration
 {
+    const PERSIST_TYPE_STEP_BY_STEP = 'stepByStep';
+    const PERSIST_TYPE_POST_PRESET = 'postPreset';
+
     private $steps = [];
 
     private $persist;
@@ -62,6 +65,28 @@ class WizardConfiguration
     public function getLastStep()
     {
         return end($this->steps);
+    }
+
+    /**
+     * @param null $currentStep
+     * @return mixed|null
+     */
+    public function getNextStep($currentStep = null)
+    {
+        if (null === $currentStep) {
+            $currentStep = $this->getFirstStepName();
+        }
+
+        $nextStep = null;
+
+        foreach ($this->steps as $name => $step) {
+            if ($name == $currentStep) {
+                $nextStep = next($this->steps);
+                break;
+            }
+        }
+
+        return $nextStep;
     }
 
     /**
@@ -124,5 +149,10 @@ class WizardConfiguration
     public function getPersist()
     {
         return $this->persist;
+    }
+
+    public function getHash()
+    {
+        return spl_object_hash($this);
     }
 }

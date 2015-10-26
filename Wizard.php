@@ -9,6 +9,8 @@
 namespace CMS\FormWizardBundle;
 
 
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
 use Symfony\Component\Form\FormFactory;
 
 class Wizard
@@ -24,12 +26,29 @@ class Wizard
     private $configuration;
 
     /**
+     * @var ExpressionLanguage
+     */
+    private $expressionLanguage;
+
+    /**
+     * @var EntityManagerInterface
+     */
+    private $flusher;
+
+    /**
+     * @var WizardDataStorage
+     */
+    private $dataStorage;
+
+    /**
      * Wizard constructor.
      * @param $configuration
      */
     public function __construct(WizardConfiguration $configuration)
     {
         $this->configuration = $configuration;
+        $this->expressionLanguage = new ExpressionLanguage();
+        $this->dataStorage = new WizardDataStorage($this->configuration->getHash());
     }
 
     /**
@@ -39,6 +58,25 @@ class Wizard
     public function setFormFactory(FormFactory $formFactory)
     {
         $this->formFactory = $formFactory;
+
+        return $this;
+    }
+
+    /**
+     * @return EntityManagerInterface
+     */
+    public function getFlusher()
+    {
+        return $this->flusher;
+    }
+
+    /**
+     * @param EntityManagerInterface $flusher
+     * @return $this
+     */
+    public function setFlusher($flusher)
+    {
+        $this->flusher = $flusher;
 
         return $this;
     }
@@ -85,12 +123,18 @@ class Wizard
     }
 
     /**
-     * @param null $step
+     * @param null $stepName
      * @param $data
      */
-    public function flush($step = null, $data)
+    public function flush($stepName = null, $data)
     {
+        $step = $this->configuration->getStep($stepName);
 
+        if ($this->configuration->getPersist() == WizardConfiguration::PERSIST_TYPE_POST_PRESET) {
+            $this->flusher->flush($data);
+        } else {
+
+        }
     }
 
     /**
@@ -99,6 +143,11 @@ class Wizard
      */
     public function getNextStepName($currentStep)
     {
+        $nextStep = $this->configuration->getNextStep($currentStep);
+
+        if (isset($nextStep['condition'])) {
+            $result = $this->expressionLanguage->evaluate($nextStep['condition'], $this->dataStorage);
+        }
 
         return $this->configuration->getNextStepName($currentStep);
     }

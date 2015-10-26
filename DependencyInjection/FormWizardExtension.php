@@ -42,6 +42,7 @@ class FormWizardExtension extends Extension
 
             $wizardDefinition = new Definition(Wizard::class, [$wizardConfigurationDefinition]);
             $wizardDefinition->addMethodCall('setFormFactory', [new Reference('form.factory')]);
+            $wizardDefinition->addMethodCall('setFlusher', [new Reference(str_replace('@', '', $properties['flusher']))]);
 
             $container->setDefinition('cms.form_wizard.' . $wizard, $wizardDefinition);
         }
