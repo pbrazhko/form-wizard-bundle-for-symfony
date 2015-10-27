@@ -90,24 +90,25 @@ class Wizard
      */
     public function getStepForm($stepName = null, $data = null, $options = array())
     {
-        $step = $this->configuration->getFirstStep();
-
         if (null === $stepName) {
             $stepName = $this->configuration->getFirstStepName();
         }
+
+        $step = $this->configuration->getStep($stepName);
 
         $form = $this->formFactory->create(new $step['type'], $data, $options);
 
         $formConfig = $form->getConfig();
 
         if(null === $data && (null !== $dataClass = $formConfig->getDataClass())){
-            /** @var AbstractType $formType */
-            $data = $this->dataStorage->getStepData($stepName, new $dataClass);
+            $data = $this->dataStorage->getData($stepName, new $dataClass);
 
-            $this->flusher->persist($data);
-
-            $form->setData($data);
+            $data = $this->flusher->merge($data);
+        } else {
+            $data = $this->dataStorage->getData($stepName, array());
         }
+
+        $form->setData($data);
 
         return $form;
     }
@@ -152,7 +153,7 @@ class Wizard
         if ($this->configuration->getPersist() == WizardConfiguration::PERSIST_TYPE_POST_PRESET) {
             $this->flusher->flush($data);
         } else {
-            $this->dataStorage->setStepData($stepName, $data);
+            $this->dataStorage->setData($stepName, $data);
         }
 
         return $this;
@@ -170,7 +171,7 @@ class Wizard
         $values = [];
 
         foreach($this->configuration->getSteps() as $name => $parameters){
-            $values[$name] = $this->dataStorage->getStepData($name);
+            $values[$name] = $this->dataStorage->getData($name);
         }
 
         if (isset($nextStep['condition'])) {

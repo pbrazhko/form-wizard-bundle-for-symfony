@@ -33,35 +33,13 @@ class WizardDataStorage
     }
 
     /**
-     * @return mixed
-     */
-    public function getData()
-    {
-        if(null === $this->data){
-            $this->data = $this->session->get($this->dataHashName, []);
-        }
-
-        return $this->data;
-    }
-
-    /**
-     * @param mixed $data
-     * @return $this
-     */
-    public function setData($data)
-    {
-        $this->data = $data;
-
-        return $this;
-    }
-
-    /**
-     * @param $stepName
+     * @param $type
      * @param $data
      * @return $this
      */
-    public function setStepData($stepName, $data){
-        $this->data[$stepName] = is_object($data)? serialize($data) : $data;
+    public function setData($type, $data)
+    {
+        $this->data[$type] = is_object($data) ? serialize($data) : $data;
 
         $this->saveData();
 
@@ -69,15 +47,16 @@ class WizardDataStorage
     }
 
     /**
-     * @param $stepName
+     * @param $type
      * @param null $default
      * @return array
      */
-    public function getStepData($stepName, $default = null){
-        $data = $this->getData();
+    public function getData($type, $default = null)
+    {
+        $data = $this->loadData();
 
-        if(isset($data[$stepName])){
-            return unserialize($data[$stepName]);
+        if (isset($data[$type])) {
+            return unserialize($data[$type]);
         }
 
         return $default;
@@ -100,6 +79,15 @@ class WizardDataStorage
         $this->session = $session;
 
         return $this;
+    }
+
+    private function loadData()
+    {
+        if (null === $this->data) {
+            $this->session->get($this->dataHashName);
+        }
+
+        return $this->data;
     }
 
     /**
