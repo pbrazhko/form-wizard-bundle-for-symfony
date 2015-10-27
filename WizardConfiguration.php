@@ -9,6 +9,8 @@
 namespace CMS\FormWizardBundle;
 
 
+use Symfony\Component\Form\FormFactory;
+
 class WizardConfiguration
 {
     const PERSIST_TYPE_STEP_BY_STEP = 'stepByStep';
@@ -22,10 +24,14 @@ class WizardConfiguration
      * WizardConfiguration constructor.
      * @param array $steps
      * @param $persist
+     * @param FormFactory $formFactory
      */
-    public function __construct(array $steps, $persist)
+    public function __construct(array $steps, $persist, FormFactory $formFactory)
     {
-        $this->steps = $steps;
+        foreach ($steps as $name => $properties) {
+            $this->steps[$name] = new WizardStep($name, $properties['type'], $formFactory);
+        }
+
         $this->persist = $persist;
     }
 
@@ -36,7 +42,6 @@ class WizardConfiguration
     {
         return $this->steps;
     }
-
 
     /**
      * @param $name

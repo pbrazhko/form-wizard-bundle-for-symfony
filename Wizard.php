@@ -11,16 +11,10 @@ namespace CMS\FormWizardBundle;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
-use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\FormFactory;
 
 class Wizard
 {
-    /**
-     * @var FormFactory
-     */
-    private $formFactory;
-
     /**
      * @var WizardConfiguration
      */
@@ -53,17 +47,6 @@ class Wizard
     }
 
     /**
-     * @param mixed $formFactory
-     * @return $this
-     */
-    public function setFormFactory(FormFactory $formFactory)
-    {
-        $this->formFactory = $formFactory;
-
-        return $this;
-    }
-
-    /**
      * @return EntityManagerInterface
      */
     public function getFlusher()
@@ -88,19 +71,19 @@ class Wizard
      * @param array $options
      * @return \Symfony\Component\Form\Form|\Symfony\Component\Form\FormInterface
      */
-    public function getStepForm($stepName = null, $data = null, $options = array())
+    public function getForm($stepName = null, $data = null, $options = array())
     {
         if (null === $stepName) {
             $stepName = $this->configuration->getFirstStepName();
         }
 
+        /** @var WizardStep $step */
         $step = $this->configuration->getStep($stepName);
 
-        $form = $this->formFactory->create(new $step['type'], $data, $options);
+        $form = $step->getForm($data, $options);
+        $dataClass = $step->getDataType();
 
-        $formConfig = $form->getConfig();
-
-        if(null === $data && (null !== $dataClass = $formConfig->getDataClass())){
+        if (null === $data && null !== $dataClass) {
             $data = $this->dataStorage->getData($stepName, new $dataClass);
 
             $data = $this->flusher->merge($data);
