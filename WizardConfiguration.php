@@ -29,7 +29,7 @@ class WizardConfiguration
     public function __construct(array $steps, $persist, FormFactory $formFactory)
     {
         foreach ($steps as $name => $properties) {
-            $this->steps[$name] = new WizardStep($name, $properties['type'], $formFactory);
+            $this->steps[$name] = new WizardStep($name, $properties['type'], $properties['condition'], $formFactory);
         }
 
         $this->persist = $persist;
@@ -45,7 +45,7 @@ class WizardConfiguration
 
     /**
      * @param $name
-     * @return null
+     * @return WizardStep
      */
     public function getStep($name)
     {

@@ -13,14 +13,19 @@ use Symfony\Component\Form\FormFactory;
 class WizardStep
 {
     /**
-     * @var
+     * @var string
      */
     private $name;
 
     /**
-     * @var
+     * @var string
      */
     private $type;
+
+    /**
+     * @var string
+     */
+    private $condition;
 
     /**
      * @var FormFactory
@@ -38,12 +43,15 @@ class WizardStep
      * WizardStep constructor.
      * @param $name
      * @param $type
+     * @param null $condition
+     * @param FormFactory $formFactory
      */
-    public function __construct($name, $type, FormFactory $formFactory)
+    public function __construct($name, $type, $condition = null, FormFactory $formFactory)
     {
         $this->formFactory = $formFactory;
         $this->name = $name;
         $this->type = $type;
+        $this->condition = $condition;
     }
 
     /**
@@ -80,6 +88,26 @@ class WizardStep
     public function setType($type)
     {
         $this->type = $type;
+
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getCondition()
+    {
+        return $this->condition;
+    }
+
+    /**
+     * @param string $condition
+     *
+     * @return WizardStep
+     */
+    public function setCondition($condition)
+    {
+        $this->condition = $condition;
 
         return $this;
     }

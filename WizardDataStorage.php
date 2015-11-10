@@ -9,10 +9,14 @@
 namespace CMS\FormWizardBundle;
 
 
+use CMS\FormWizardBundle\Exception\InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Session\Session;
 
 class WizardDataStorage
 {
+    const DATA_TYPE_ARRAY = 1;
+    const DATA_TYPE_OBJECT = 2;
+
     private $data;
 
     /**
@@ -33,13 +37,22 @@ class WizardDataStorage
     }
 
     /**
-     * @param $type
+     * @param $dataType
+     * @param $dataName
      * @param $data
      * @return $this
      */
-    public function setData($type, $data)
+    public function setData($dataType, $dataName, $data)
     {
-        $this->data[$type] = is_object($data) ? serialize($data) : $data;
+        if(!in_array($dataType, [self::DATA_TYPE_ARRAY, self::DATA_TYPE_OBJECT])){
+            throw new InvalidArgumentException('Data type is not supported!');
+        }
+
+        if($dataType == self::DATA_TYPE_OBJECT){
+            $data = serialize($data);
+        }
+
+        $this->data[$dataName] = $data;
 
         $this->saveData();
 
@@ -47,19 +60,26 @@ class WizardDataStorage
     }
 
     /**
-     * @param $type
+     * @param $dataType
      * @param null $default
+     * @param null $dataName
      * @return array
      */
-    public function getData($type, $default = null)
+    public function getData($dataType, $dataName, $default = null)
     {
-        $data = $this->loadData();
+        $allData = $this->loadData();
 
-        if (isset($data[$type])) {
-            return unserialize($data[$type]);
+        $data = $default;
+
+        if (isset($allData[$dataName])) {
+            $data = $allData[$dataName];
         }
 
-        return $default;
+        if($dataType == self::DATA_TYPE_OBJECT && is_string($data)){
+            $data = unserialize($data);
+        }
+
+        return $data;
     }
 
     /**
@@ -84,7 +104,7 @@ class WizardDataStorage
     private function loadData()
     {
         if (null === $this->data) {
-            $this->session->get($this->dataHashName);
+            $this->data = $this->session->get($this->dataHashName);
         }
 
         return $this->data;

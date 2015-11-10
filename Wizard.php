@@ -84,11 +84,11 @@ class Wizard
         $dataClass = $step->getDataType();
 
         if (null === $data && null !== $dataClass) {
-            $data = $this->dataStorage->getData($stepName, new $dataClass);
+            $data = $this->dataStorage->getData(WizardDataStorage::DATA_TYPE_OBJECT, $dataClass, new $dataClass);
 
             $data = $this->flusher->merge($data);
         } else {
-            $data = $this->dataStorage->getData($stepName, array());
+            $data = $this->dataStorage->getData(WizardDataStorage::DATA_TYPE_ARRAY, $stepName, array());
         }
 
         $form->setData($data);
@@ -131,12 +131,21 @@ class Wizard
             $stepName = $this->configuration->getFirstStepName();
         }
 
+        $step = $this->configuration->getStep($stepName);
+
+        $dataType = $step->getDataType();
+
         $this->flusher->persist($data);
 
         if ($this->configuration->getPersist() == WizardConfiguration::PERSIST_TYPE_POST_PRESET) {
             $this->flusher->flush($data);
         } else {
-            $this->dataStorage->setData($stepName, $data);
+            if(null === $dataType){
+                $this->dataStorage->setData(WizardDataStorage::DATA_TYPE_ARRAY, $stepName, $data);
+            }
+            else {
+                $this->dataStorage->setData(WizardDataStorage::DATA_TYPE_OBJECT, $dataType, $data);
+            }
         }
 
         return $this;
@@ -152,13 +161,22 @@ class Wizard
         $nextStepName = $this->configuration->getNextStepName($currentStep);
 
         $values = [];
+        /**
+         * @var string $name
+         * @var WizardStep $step
+         */
+        foreach($this->configuration->getSteps() as $name => $step){
+            $dataType = $step->getDataType();
 
-        foreach($this->configuration->getSteps() as $name => $parameters){
-            $values[$name] = $this->dataStorage->getData($name);
+            $values[$name] = $this->dataStorage->getData(
+                null === $dataType ? WizardDataStorage::DATA_TYPE_ARRAY : WizardDataStorage::DATA_TYPE_OBJECT,
+                null === $dataType ? $step->getName() : $dataType,
+                null === $dataType ? array() : new $dataType
+            );
         }
 
-        if (isset($nextStep['condition'])) {
-            if(!$this->expressionLanguage->evaluate($nextStep['condition'], $values)){
+        if (null !== $nextStep->getCondition()) {
+            if(!$this->expressionLanguage->evaluate($nextStep->getCondition(), $values)){
                 return $this->getNextStepName($nextStepName);
             }
         }
