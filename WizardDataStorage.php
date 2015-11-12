@@ -10,9 +10,11 @@ namespace CMS\FormWizardBundle;
 
 
 use CMS\FormWizardBundle\Exception\InvalidArgumentException;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Session\Session;
+use Traversable;
 
-class WizardDataStorage
+class WizardDataStorage implements \IteratorAggregate
 {
     const DATA_TYPE_ARRAY = 1;
     const DATA_TYPE_OBJECT = 2;
@@ -24,7 +26,15 @@ class WizardDataStorage
      */
     private $session;
 
+    /**
+     * @var string
+     */
     private $dataHashName;
+
+    /**
+     * @var EntityManagerInterface
+     */
+    private $flusher;
 
     /**
      * WizardDataStorage constructor.
@@ -34,6 +44,25 @@ class WizardDataStorage
     {
         $this->session = new Session();
         $this->dataHashName = $dataHashName;
+    }
+
+    /**
+     * @return EntityManagerInterface
+     */
+    public function getFlusher()
+    {
+        return $this->flusher;
+    }
+
+    /**
+     * @param EntityManagerInterface $flusher
+     * @return $this
+     */
+    public function setFlusher($flusher)
+    {
+        $this->flusher = $flusher;
+
+        return $this;
     }
 
     /**
@@ -49,7 +78,7 @@ class WizardDataStorage
         }
 
         if($dataType == self::DATA_TYPE_OBJECT){
-            $data = serialize($data);
+            //$this->flusher->detach($data);
         }
 
         $this->data[$dataName] = $data;
@@ -73,10 +102,10 @@ class WizardDataStorage
 
         if (isset($allData[$dataName])) {
             $data = $allData[$dataName];
-        }
 
-        if($dataType == self::DATA_TYPE_OBJECT && is_string($data)){
-            $data = unserialize($data);
+            if ($dataType == self::DATA_TYPE_OBJECT) {
+                $data = $this->flusher->merge($data);
+            }
         }
 
         return $data;
@@ -115,5 +144,23 @@ class WizardDataStorage
      */
     private function saveData(){
         $this->session->set($this->dataHashName, $this->data);
+    }
+
+    /**
+     * (PHP 5 &gt;= 5.0.0)<br/>
+     * Retrieve an external iterator
+     * @link http://php.net/manual/en/iteratoraggregate.getiterator.php
+     * @return Traversable An instance of an object implementing <b>Iterator</b> or
+     * <b>Traversable</b>
+     */
+    public function getIterator()
+    {
+        return new \ArrayIterator($this->data);
+    }
+
+    public function clear()
+    {
+        $this->data = null;
+        $this->saveData();
     }
 }

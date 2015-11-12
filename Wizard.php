@@ -10,8 +10,8 @@ namespace CMS\FormWizardBundle;
 
 
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\ORMException;
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
-use Symfony\Component\Form\FormFactory;
 
 class Wizard
 {
@@ -62,6 +62,8 @@ class Wizard
     {
         $this->flusher = $flusher;
 
+        $this->dataStorage->setFlusher($this->flusher);
+
         return $this;
     }
 
@@ -74,21 +76,40 @@ class Wizard
     public function getForm($stepName = null, $data = null, $options = array())
     {
         if (null === $stepName) {
-            $stepName = $this->configuration->getFirstStepName();
+            $step = $this->configuration->getFirstStep();
+        } else {
+            $step = $this->configuration->getStep($stepName);
         }
 
-        /** @var WizardStep $step */
-        $step = $this->configuration->getStep($stepName);
+        $values = [];
+        /**
+         * @var string $name
+         * @var WizardStep $step
+         */
+        foreach ($this->configuration->getSteps() as $name => $step) {
+            $dataType = $step->getDataType();
+
+            $values[$name] = $this->dataStorage->getData(
+                null === $dataType ? WizardDataStorage::DATA_TYPE_ARRAY : WizardDataStorage::DATA_TYPE_OBJECT,
+                null === $dataType ? $step->getName() : $dataType,
+                null === $dataType ? array() : new $dataType
+            );
+        }
+
+        if (null !== $step->getCondition()) {
+            if (!$this->expressionLanguage->evaluate($step->getCondition(), $values)) {
+                return $this->getForm($this->getNextStep($step->getName()), $data, $options);
+            }
+        }
+
 
         $form = $step->getForm($data, $options);
         $dataClass = $step->getDataType();
 
         if (null === $data && null !== $dataClass) {
             $data = $this->dataStorage->getData(WizardDataStorage::DATA_TYPE_OBJECT, $dataClass, new $dataClass);
-
-            $data = $this->flusher->merge($data);
         } else {
-            $data = $this->dataStorage->getData(WizardDataStorage::DATA_TYPE_ARRAY, $stepName, array());
+            $data = $this->dataStorage->getData(WizardDataStorage::DATA_TYPE_ARRAY, $step->getName(), array());
         }
 
         $form->setData($data);
@@ -117,7 +138,7 @@ class Wizard
      */
     public function finished($currentStep)
     {
-        return $currentStep == $this->configuration->getLastStep();
+        return $currentStep == $this->configuration->getLastStep() || false === $this->getNextStep($currentStep);
     }
 
     /**
@@ -128,23 +149,32 @@ class Wizard
     public function flush($stepName = null, $data)
     {
         if(null === $stepName){
-            $stepName = $this->configuration->getFirstStepName();
+            $step = $this->configuration->getFirstStep();
+        } else {
+            $step = $this->configuration->getStep($stepName);
         }
-
-        $step = $this->configuration->getStep($stepName);
 
         $dataType = $step->getDataType();
 
-        $this->flusher->persist($data);
-
-        if ($this->configuration->getPersist() == WizardConfiguration::PERSIST_TYPE_POST_PRESET) {
-            $this->flusher->flush($data);
+        if (null === $dataType) {
+            $this->dataStorage->setData(WizardDataStorage::DATA_TYPE_ARRAY, $step->getName(), $data);
         } else {
-            if(null === $dataType){
-                $this->dataStorage->setData(WizardDataStorage::DATA_TYPE_ARRAY, $stepName, $data);
+            $this->dataStorage->setData(WizardDataStorage::DATA_TYPE_OBJECT, $dataType, $data);
+        }
+
+        if ($this->finished($stepName) || $this->configuration->getPersist() == WizardConfiguration::PERSIST_TYPE_STEP_BY_STEP) {
+            try {
+                foreach ($this->dataStorage as $data) {
+                    $this->flusher->persist($data);
+                }
+
+                $this->flusher->flush();
+            } catch (ORMException $e) {
+                $this->flusher->rollback();
             }
-            else {
-                $this->dataStorage->setData(WizardDataStorage::DATA_TYPE_OBJECT, $dataType, $data);
+
+            if ($this->finished($stepName)) {
+                $this->dataStorage->clear();
             }
         }
 
@@ -152,13 +182,12 @@ class Wizard
     }
 
     /**
-     * @param $currentStep
+     * @param $currentStepName
      * @return mixed|null
      */
-    public function getNextStepName($currentStep)
+    public function getNextStep($currentStepName)
     {
-        $nextStep = $this->configuration->getNextStep($currentStep);
-        $nextStepName = $this->configuration->getNextStepName($currentStep);
+        $nextStep = $this->configuration->getNextStep($currentStepName);
 
         $values = [];
         /**
@@ -175,12 +204,12 @@ class Wizard
             );
         }
 
-        if (null !== $nextStep->getCondition()) {
+        if (false !== $nextStep && null !== $nextStep->getCondition()) {
             if(!$this->expressionLanguage->evaluate($nextStep->getCondition(), $values)){
-                return $this->getNextStepName($nextStepName);
+                return $this->getNextStep($nextStep->getName());
             }
         }
 
-        return $this->configuration->getNextStepName($currentStep);
+        return $nextStep;
     }
 }

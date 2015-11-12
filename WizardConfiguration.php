@@ -74,62 +74,21 @@ class WizardConfiguration
 
     /**
      * @param null $currentStep
-     * @return mixed|null
+     * @return WizardStep|null
      */
-    public function getNextStep($currentStep = null)
+    public function getNextStep($currentStepName = null)
     {
-        if (null === $currentStep) {
-            $currentStep = $this->getFirstStepName();
+        if (null === $currentStepName) {
+            $currentStep = $this->getFirstStep();
+        } else {
+            $currentStep = $this->getStep($currentStepName);
         }
 
-        $nextStep = null;
+        $nextStep = false;
 
         foreach ($this->steps as $name => $step) {
-            if ($name == $currentStep) {
+            if ($name == $currentStep->getName()) {
                 $nextStep = next($this->steps);
-                break;
-            }
-        }
-
-        return $nextStep;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getFirstStepName()
-    {
-        $nameSteps = array_keys($this->steps);
-
-        return reset($nameSteps);
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getLastStepName()
-    {
-        $nameSteps = array_keys($this->steps);
-
-        return end($nameSteps);
-    }
-
-    /**
-     * @param $currentStep
-     * @return mixed|null
-     */
-    public function getNextStepName($currentStep)
-    {
-        if (null === $currentStep) {
-            $currentStep = $this->getFirstStepName();
-        }
-
-        $nextStep = null;
-
-        $nameSteps = array_keys($this->steps);
-        foreach ($nameSteps as $name) {
-            if ($name == $currentStep) {
-                $nextStep = next($nameSteps);
                 break;
             }
         }
