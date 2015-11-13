@@ -37,6 +37,11 @@ class WizardDataStorage implements \IteratorAggregate
     private $flusher;
 
     /**
+     * @var array
+     */
+    private $selectingData = [];
+
+    /**
      * WizardDataStorage constructor.
      * @param $dataHashName
      */
@@ -78,7 +83,8 @@ class WizardDataStorage implements \IteratorAggregate
         }
 
         if($dataType == self::DATA_TYPE_OBJECT){
-            //$this->flusher->detach($data);
+            $data = $this->flusher->merge($data);
+            $this->flusher->detach($data);
         }
 
         $this->data[$dataName] = $data;
@@ -96,6 +102,10 @@ class WizardDataStorage implements \IteratorAggregate
      */
     public function getData($dataType, $dataName, $default = null)
     {
+        if (isset($this->selectingData[$dataName])) {
+            return $this->selectingData[$dataName];
+        }
+
         $allData = $this->loadData();
 
         $data = $default;
@@ -104,8 +114,10 @@ class WizardDataStorage implements \IteratorAggregate
             $data = $allData[$dataName];
 
             if ($dataType == self::DATA_TYPE_OBJECT) {
-                $data = $this->flusher->merge($data);
+                //$data = $this->flusher->merge($data);
             }
+
+            $this->selectingData[$dataName] = $data;
         }
 
         return $data;

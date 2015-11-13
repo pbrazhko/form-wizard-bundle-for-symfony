@@ -81,27 +81,9 @@ class Wizard
             $step = $this->configuration->getStep($stepName);
         }
 
-        $values = [];
-        /**
-         * @var string $name
-         * @var WizardStep $step
-         */
-        foreach ($this->configuration->getSteps() as $name => $step) {
-            $dataType = $step->getDataType();
-
-            $values[$name] = $this->dataStorage->getData(
-                null === $dataType ? WizardDataStorage::DATA_TYPE_ARRAY : WizardDataStorage::DATA_TYPE_OBJECT,
-                null === $dataType ? $step->getName() : $dataType,
-                null === $dataType ? array() : new $dataType
-            );
+        if (!$this->executeCondition($step)) {
+            return $this->getForm($this->configuration->getNextStep($step->getName()), $data, $options);
         }
-
-        if (null !== $step->getCondition()) {
-            if (!$this->expressionLanguage->evaluate($step->getCondition(), $values)) {
-                return $this->getForm($this->getNextStep($step->getName()), $data, $options);
-            }
-        }
-
 
         $form = $step->getForm($data, $options);
         $dataClass = $step->getDataType();
@@ -189,12 +171,37 @@ class Wizard
     {
         $nextStep = $this->configuration->getNextStep($currentStepName);
 
+        if (false != $nextStep && !$this->executeCondition($nextStep)) {
+            return $this->getNextStep($nextStep->getName());
+        }
+
+        return $nextStep;
+    }
+
+    /**
+     * @param $step
+     * @return bool|string
+     */
+    private function executeCondition(WizardStep $step)
+    {
+        if (null !== $step->getCondition()) {
+            return $this->expressionLanguage->evaluate($step->getCondition(), $this->getConditionValues());
+        }
+
+        return true;
+    }
+
+    /**
+     * @return array
+     */
+    private function getConditionValues()
+    {
         $values = [];
         /**
          * @var string $name
          * @var WizardStep $step
          */
-        foreach($this->configuration->getSteps() as $name => $step){
+        foreach ($this->configuration->getSteps() as $name => $step) {
             $dataType = $step->getDataType();
 
             $values[$name] = $this->dataStorage->getData(
@@ -204,12 +211,6 @@ class Wizard
             );
         }
 
-        if (false !== $nextStep && null !== $nextStep->getCondition()) {
-            if(!$this->expressionLanguage->evaluate($nextStep->getCondition(), $values)){
-                return $this->getNextStep($nextStep->getName());
-            }
-        }
-
-        return $nextStep;
+        return $values;
     }
 }
