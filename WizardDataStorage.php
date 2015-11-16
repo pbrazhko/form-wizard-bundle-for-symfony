@@ -11,6 +11,8 @@ namespace CMS\FormWizardBundle;
 
 use CMS\FormWizardBundle\Exception\InvalidArgumentException;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\ORMException;
+use Doctrine\ORM\Proxy\Proxy;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Traversable;
 
@@ -39,7 +41,7 @@ class WizardDataStorage implements \IteratorAggregate
     /**
      * @var array
      */
-    private $selectingData = [];
+    private $selectedData = [];
 
     /**
      * WizardDataStorage constructor.
@@ -71,19 +73,13 @@ class WizardDataStorage implements \IteratorAggregate
     }
 
     /**
-     * @param $dataType
      * @param $dataName
      * @param $data
      * @return $this
      */
-    public function setData($dataType, $dataName, $data)
+    public function setData($dataName, $data)
     {
-        if(!in_array($dataType, [self::DATA_TYPE_ARRAY, self::DATA_TYPE_OBJECT])){
-            throw new InvalidArgumentException('Data type is not supported!');
-        }
-
-        if($dataType == self::DATA_TYPE_OBJECT){
-            $data = $this->flusher->merge($data);
+        if (is_object($data)) {
             $this->flusher->detach($data);
         }
 
@@ -95,15 +91,14 @@ class WizardDataStorage implements \IteratorAggregate
     }
 
     /**
-     * @param $dataType
-     * @param null $default
      * @param null $dataName
+     * @param null $default
      * @return array
      */
-    public function getData($dataType, $dataName, $default = null)
+    public function getData($dataName, $default = null)
     {
-        if (isset($this->selectingData[$dataName])) {
-            return $this->selectingData[$dataName];
+        if (isset($this->selectedData[$dataName])) {
+            return $this->selectedData[$dataName];
         }
 
         $allData = $this->loadData();
@@ -113,11 +108,11 @@ class WizardDataStorage implements \IteratorAggregate
         if (isset($allData[$dataName])) {
             $data = $allData[$dataName];
 
-            if ($dataType == self::DATA_TYPE_OBJECT) {
-                //$data = $this->flusher->merge($data);
+            if (is_object($data)) {
+                $this->merge($data);
             }
 
-            $this->selectingData[$dataName] = $data;
+            $this->selectedData[$dataName] = $data;
         }
 
         return $data;
@@ -142,6 +137,24 @@ class WizardDataStorage implements \IteratorAggregate
         return $this;
     }
 
+    /**
+     * @return void
+     */
+    public function flush(){
+        try {
+            foreach ($this->data as $dataName => $data) {
+                $this->merge($data);
+            }
+
+            $this->flusher->flush();
+        } catch (ORMException $e) {
+            $this->flusher->rollback();
+        }
+    }
+
+    /**
+     * @return mixed
+     */
     private function loadData()
     {
         if (null === $this->data) {
@@ -154,8 +167,29 @@ class WizardDataStorage implements \IteratorAggregate
     /**
      * Saving data to session
      */
-    private function saveData(){
+    private function saveData()
+    {
         $this->session->set($this->dataHashName, $this->data);
+    }
+
+    /**
+     * @param $data
+     */
+    private function merge($data)
+    {
+        if(is_object($data)) {
+            $metaDataClass = $this->flusher->getClassMetadata(get_class($data));
+
+            foreach ($metaDataClass->getAssociationMappings() as $name => $field) {
+                $fieldValue = $metaDataClass->getFieldValue($data, $name);
+
+                if ($fieldValue instanceof $field['targetEntity']) {
+                    $this->flusher->merge($fieldValue);
+                }
+            }
+        }
+
+        $this->flusher->persist($data);
     }
 
     /**
@@ -167,9 +201,12 @@ class WizardDataStorage implements \IteratorAggregate
      */
     public function getIterator()
     {
-        return new \ArrayIterator($this->data);
+        return new \ArrayIterator(array_keys($this->data));
     }
 
+    /**
+     *
+     */
     public function clear()
     {
         $this->data = null;
