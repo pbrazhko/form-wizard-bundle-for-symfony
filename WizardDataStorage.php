@@ -20,9 +20,6 @@ use Traversable;
 
 class WizardDataStorage implements \IteratorAggregate
 {
-    const DATA_TYPE_ARRAY = 1;
-    const DATA_TYPE_OBJECT = 2;
-
     private $data = [];
 
     /**
@@ -49,29 +46,13 @@ class WizardDataStorage implements \IteratorAggregate
      * WizardDataStorage constructor.
      * @param $dataHashName
      */
-    public function __construct($dataHashName)
+    public function __construct($dataHashName, EntityManagerInterface $entityManager)
     {
         $this->session = new Session();
         $this->dataHashName = $dataHashName;
-    }
+        $this->flusher = $entityManager;
 
-    /**
-     * @return EntityManagerInterface
-     */
-    public function getFlusher()
-    {
-        return $this->flusher;
-    }
-
-    /**
-     * @param EntityManagerInterface $flusher
-     * @return $this
-     */
-    public function setFlusher($flusher)
-    {
-        $this->flusher = $flusher;
-
-        return $this;
+        $this->loadData();
     }
 
     /**
@@ -103,12 +84,10 @@ class WizardDataStorage implements \IteratorAggregate
             return $this->selectedData[$dataName];
         }
 
-        $allData = $this->loadData();
-
         $data = $default;
 
-        if (isset($allData[$dataName])) {
-            $data = $allData[$dataName];
+        if (isset($this->data[$dataName])) {
+            $data = $this->data[$dataName];
 
             if (is_object($data)) {
                 $this->merge($data);
@@ -156,7 +135,7 @@ class WizardDataStorage implements \IteratorAggregate
     private function loadData()
     {
         if (!count($this->data)) {
-            $this->data = $this->session->get($this->dataHashName);
+            $this->data = $this->session->get($this->dataHashName, []);
         }
 
         foreach ($this->data as $data) {
@@ -180,27 +159,7 @@ class WizardDataStorage implements \IteratorAggregate
     private function merge($data)
     {
         if(is_object($data)) {
-            $metaDataClass = $this->flusher->getClassMetadata(get_class($data));
-
-            foreach ($metaDataClass->getAssociationMappings() as $name => $field) {
-                $fieldValue = $metaDataClass->getFieldValue($data, $name);
-
-                if ($fieldValue instanceof $field['targetEntity']) {
-                    $this->flusher->persist($fieldValue);
-                }
-
-                if ($fieldValue instanceof PersistentCollection) {
-                    foreach ($fieldValue as $item) {
-                        $this->merge($item);
-                    }
-                }
-            }
-
-            if (!$metaDataClass->getIdentifierValues($data)) {
-                $this->flusher->persist($data);
-            } else {
-                $this->flusher->merge($data);
-            }
+            $this->flusher->persist($data);
         }
     }
 

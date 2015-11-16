@@ -16,6 +16,7 @@ use CMS\FormWizardBundle\Event\PrePersistStepEvent;
 use CMS\FormWizardBundle\Event\StepEvents;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
 
 class Wizard
@@ -48,27 +49,15 @@ class Wizard
     /**
      * Wizard constructor.
      * @param WizardConfiguration $configuration
-     * @param EventDispatcher $eventDispatcher
+     * @param EventDispatcherInterface $eventDispatcher
+     * @param EntityManagerInterface $entityManager
      */
-    public function __construct(WizardConfiguration $configuration, $eventDispatcher)
+    public function __construct(WizardConfiguration $configuration, EventDispatcherInterface $eventDispatcher, EntityManagerInterface $entityManager)
     {
         $this->configuration = $configuration;
         $this->expressionLanguage = new ExpressionLanguage();
-        $this->dataStorage = new WizardDataStorage($this->configuration->getHash());
+        $this->dataStorage = new WizardDataStorage($this->configuration->getHash(), $entityManager);
         $this->eventDispatcher = $eventDispatcher;
-    }
-
-    /**
-     * @param EntityManagerInterface $flusher
-     * @return $this
-     */
-    public function setFlusher($flusher)
-    {
-        $this->flusher = $flusher;
-
-        $this->dataStorage->setFlusher($this->flusher);
-
-        return $this;
     }
 
     /**
