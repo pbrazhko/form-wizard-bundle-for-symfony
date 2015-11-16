@@ -12,6 +12,7 @@ namespace CMS\FormWizardBundle;
 use CMS\FormWizardBundle\Exception\InvalidArgumentException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\ORMException;
+use Doctrine\ORM\PersistentCollection;
 use Doctrine\ORM\Proxy\Proxy;
 use Doctrine\ORM\UnitOfWork;
 use Symfony\Component\HttpFoundation\Session\Session;
@@ -22,7 +23,7 @@ class WizardDataStorage implements \IteratorAggregate
     const DATA_TYPE_ARRAY = 1;
     const DATA_TYPE_OBJECT = 2;
 
-    private $data;
+    private $data = [];
 
     /**
      * @var Session
@@ -154,8 +155,12 @@ class WizardDataStorage implements \IteratorAggregate
      */
     private function loadData()
     {
-        if (null === $this->data) {
+        if (!count($this->data)) {
             $this->data = $this->session->get($this->dataHashName);
+        }
+
+        foreach ($this->data as $data) {
+            $this->merge($data);
         }
 
         return $this->data;
@@ -181,7 +186,13 @@ class WizardDataStorage implements \IteratorAggregate
                 $fieldValue = $metaDataClass->getFieldValue($data, $name);
 
                 if ($fieldValue instanceof $field['targetEntity']) {
-                    $this->merge($fieldValue);
+                    $this->flusher->persist($fieldValue);
+                }
+
+                if ($fieldValue instanceof PersistentCollection) {
+                    foreach ($fieldValue as $item) {
+                        $this->merge($item);
+                    }
                 }
             }
 
