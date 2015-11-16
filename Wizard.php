@@ -9,8 +9,10 @@
 namespace CMS\FormWizardBundle;
 
 
+use CMS\FormWizardBundle\Event\FormWizardEvent;
 use CMS\FormWizardBundle\Event\PostPersistStepEvent;
 use CMS\FormWizardBundle\Event\PrePersistStep;
+use CMS\FormWizardBundle\Event\PrePersistStepEvent;
 use CMS\FormWizardBundle\Event\StepEvents;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -45,14 +47,15 @@ class Wizard
 
     /**
      * Wizard constructor.
-     * @param $configuration
+     * @param WizardConfiguration $configuration
+     * @param EventDispatcher $eventDispatcher
      */
-    public function __construct(WizardConfiguration $configuration)
+    public function __construct(WizardConfiguration $configuration, $eventDispatcher)
     {
         $this->configuration = $configuration;
         $this->expressionLanguage = new ExpressionLanguage();
         $this->dataStorage = new WizardDataStorage($this->configuration->getHash());
-        $this->eventDispatcher = new EventDispatcher();
+        $this->eventDispatcher = $eventDispatcher;
     }
 
     /**
@@ -74,9 +77,9 @@ class Wizard
      * @param array $options
      * @return \Symfony\Component\Form\Form|\Symfony\Component\Form\FormInterface
      */
-    public function getForm($stepName = null, $data = null, $options = array())
+    public function getForm($stepName, $data = null, $options = array())
     {
-        $step = null === $stepName ? $this->configuration->getFirstStep() : $this->configuration->getStep($stepName);
+        $step = $this->configuration->getStep($stepName);
 
         if (!$this->executeCondition($step)) {
             return $this->getForm($this->configuration->getNextStep($step->getName()), $data, $options);
@@ -112,12 +115,14 @@ class Wizard
     }
 
     /**
-     * @param $currentStep
+     * @param $currentStepName
      * @return bool
      */
-    public function finished($currentStep)
+    public function finished($currentStepName)
     {
-        return $currentStep == $this->configuration->getLastStep() || false === $this->getNextStep($currentStep);
+        $currentStep = $this->getStep($currentStepName);
+
+        return $currentStep == $this->configuration->getLastStep() || false === $this->getNextStep($currentStepName);
     }
 
     /**
@@ -125,30 +130,44 @@ class Wizard
      * @param $data
      * @return $this
      */
-    public function flush($stepName = null, $data)
+    public function flush($stepName, $data)
     {
-        $step = null === $stepName ? $this->configuration->getFirstStep() : $this->configuration->getStep($stepName);
+        $step = $this->configuration->getStep($stepName);
 
         $dataName = null === ($dataType = $step->getDataType()) ? $step->getName() : $dataType;
 
         $this->dataStorage->setData($dataName, $data);
+        $step->setData($data);
 
         if ($this->finished($stepName) || $this->configuration->getPersist() == WizardConfiguration::PERSIST_TYPE_STEP_BY_STEP) {
 
-            $this->eventDispatcher->dispatch(StepEvents::PRE_PERSIST_STEP_EVENT, new PrePersistStep($step));
+            $this->eventDispatcher->dispatch(StepEvents::PRE_PERSIST_STEP_EVENT, new FormWizardEvent($this, $stepName));
 
             $this->dataStorage->flush();
 
-            $this->eventDispatcher->dispatch(StepEvents::POST_PERSIST_STEP_EVENT, new PostPersistStepEvent($step));
+            $this->eventDispatcher->dispatch(StepEvents::POST_PERSIST_STEP_EVENT, new FormWizardEvent($this, $stepName));
 
             if($this->finished($stepName)){
 
-                $this->eventDispatcher->dispatch(StepEvents::FLUSH_WIZARD_EVENT);
+                $this->eventDispatcher->dispatch(StepEvents::FLUSH_WIZARD_EVENT, new FormWizardEvent($this, $stepName));
                 $this->dataStorage->clear();
             }
         }
 
         return $this;
+    }
+
+    /**
+     * @param $stepName
+     * @return WizardStep
+     */
+    public function getStep($stepName)
+    {
+        $step = $this->configuration->getStep($stepName);
+        $dataName = null === ($dataType = $step->getDataType()) ? $step->getName() : $dataType;
+        $step->setData($this->dataStorage->getData($dataName));
+
+        return $step;
     }
 
     /**
@@ -166,6 +185,16 @@ class Wizard
         return $nextStep;
     }
 
+    public function getFirstStep()
+    {
+        return $this->configuration->getFirstStep();
+    }
+
+    public function getLastStep()
+    {
+        return $this->configuration->getLastStep();
+    }
+
     /**
      * @param $step
      * @return bool|string
@@ -180,22 +209,9 @@ class Wizard
     }
 
     /**
-     * @param WizardStep $step
-     * @param $eventName
-     * @return string
-     */
-    private function executeEvent(WizardStep $step, $eventName){
-        if (null !== $step->getEvent($eventName)) {
-            $result = $this->expressionLanguage->evaluate($step->getEvent($eventName), $this->getValues());
-        }
-
-        var_dump($result);
-    }
-
-    /**
      * @return array
      */
-    private function getValues()
+    public function getValues()
     {
         $values = [];
         /**

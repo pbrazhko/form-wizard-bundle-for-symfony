@@ -46,7 +46,7 @@ class FormWizardExtension extends Extension
 
             $wizardConfigurationDefinition->setPublic(false);
 
-            $wizardDefinition = new Definition(Wizard::class, [$wizardConfigurationDefinition]);
+            $wizardDefinition = new Definition(Wizard::class, [$wizardConfigurationDefinition, new Reference('event_dispatcher')]);
             $wizardDefinition->addMethodCall('setFlusher', [new Reference(str_replace('@', '', $properties['flusher']))]);
 
             $container->setDefinition('cms.form_wizard.' . $wizard, $wizardDefinition);

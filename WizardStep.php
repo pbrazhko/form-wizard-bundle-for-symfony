@@ -37,7 +37,7 @@ class WizardStep
      */
     private $form;
 
-    private $events;
+    private $data;
 
     private $dataClass;
 
@@ -48,13 +48,12 @@ class WizardStep
      * @param null $condition
      * @param FormFactory $formFactory
      */
-    public function __construct($name, $type, $condition = null, $events, FormFactory $formFactory)
+    public function __construct($name, $type, $condition = null, FormFactory $formFactory)
     {
         $this->formFactory = $formFactory;
         $this->name = $name;
         $this->type = $type;
         $this->condition = $condition;
-        $this->events = $events;
     }
 
     /**
@@ -72,6 +71,25 @@ class WizardStep
     public function setName($name)
     {
         $this->name = $name;
+
+        return $this;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getData()
+    {
+        return $this->data;
+    }
+
+    /**
+     * @param mixed $data
+     * @return $this
+     */
+    public function setData($data)
+    {
+        $this->data = $data;
 
         return $this;
     }

@@ -13,6 +13,7 @@ use CMS\FormWizardBundle\Exception\InvalidArgumentException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\ORMException;
 use Doctrine\ORM\Proxy\Proxy;
+use Doctrine\ORM\UnitOfWork;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Traversable;
 
@@ -142,10 +143,6 @@ class WizardDataStorage implements \IteratorAggregate
      */
     public function flush(){
         try {
-            foreach ($this->data as $dataName => $data) {
-                $this->merge($data);
-            }
-
             $this->flusher->flush();
         } catch (ORMException $e) {
             $this->flusher->rollback();
@@ -184,12 +181,16 @@ class WizardDataStorage implements \IteratorAggregate
                 $fieldValue = $metaDataClass->getFieldValue($data, $name);
 
                 if ($fieldValue instanceof $field['targetEntity']) {
-                    $this->flusher->merge($fieldValue);
+                    $this->merge($fieldValue);
                 }
             }
-        }
 
-        $this->flusher->persist($data);
+            if (!$metaDataClass->getIdentifierValues($data)) {
+                $this->flusher->persist($data);
+            } else {
+                $this->flusher->merge($data);
+            }
+        }
     }
 
     /**

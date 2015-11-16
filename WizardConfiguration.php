@@ -29,7 +29,7 @@ class WizardConfiguration
     public function __construct(array $steps, $persist, FormFactory $formFactory)
     {
         foreach ($steps as $name => $properties) {
-            $this->steps[$name] = new WizardStep($name, $properties['type'], $properties['condition'], $properties['events'], $formFactory);
+            $this->steps[$name] = new WizardStep($name, $properties['type'], $properties['condition'], $formFactory);
         }
 
         $this->persist = $persist;
@@ -115,6 +115,9 @@ class WizardConfiguration
         return $this->persist;
     }
 
+    /**
+     * @return string
+     */
     public function getHash()
     {
         return md5(serialize($this));
