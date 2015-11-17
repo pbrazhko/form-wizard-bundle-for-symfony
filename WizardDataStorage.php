@@ -10,6 +10,7 @@ namespace CMS\FormWizardBundle;
 
 
 use CMS\FormWizardBundle\Exception\InvalidArgumentException;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\ORMException;
 use Doctrine\ORM\PersistentCollection;
@@ -38,11 +39,6 @@ class WizardDataStorage implements \IteratorAggregate
     private $flusher;
 
     /**
-     * @var array
-     */
-    private $selectedData = [];
-
-    /**
      * WizardDataStorage constructor.
      * @param $dataHashName
      */
@@ -62,11 +58,9 @@ class WizardDataStorage implements \IteratorAggregate
      */
     public function setData($dataName, $data)
     {
-        if (is_object($data)) {
-            $this->flusher->detach($data);
-        }
+        $metaDataClass = $this->flusher->getClassMetadata($data);
 
-        $this->data[$dataName] = $data;
+        $this->data[$dataName] = $metaDataClass->getFieldValue($data, $metaDataClass->getIdentifier());
 
         $this->saveData();
 
@@ -80,23 +74,20 @@ class WizardDataStorage implements \IteratorAggregate
      */
     public function getData($dataName, $default = null)
     {
-        if (isset($this->selectedData[$dataName])) {
-            return $this->selectedData[$dataName];
-        }
-
         $data = $default;
 
         if (isset($this->data[$dataName])) {
             $data = $this->data[$dataName];
-
-            if (is_object($data)) {
-                $this->merge($data);
-            }
-
-            $this->selectedData[$dataName] = $data;
         }
 
-        return $data;
+        return $this->flusher->getUnitOfWork()->tryGetById($data, get_class($data));
+    }
+
+    public function refreshData()
+    {
+        foreach ($this->session->get($this->dataHashName, []) as $data) {
+            $this->merge($data);
+        }
     }
 
     /**
@@ -119,11 +110,17 @@ class WizardDataStorage implements \IteratorAggregate
     }
 
     /**
-     * @return void
+     * @param $dataName
      */
-    public function flush(){
+    public function flush($dataName, $data)
+    {
         try {
+            $this->refreshData();
+
+            $this->flusher->persist($data);
             $this->flusher->flush();
+
+            $this->setData($dataName, $data);
         } catch (ORMException $e) {
             $this->flusher->rollback();
         }
@@ -136,10 +133,6 @@ class WizardDataStorage implements \IteratorAggregate
     {
         if (!count($this->data)) {
             $this->data = $this->session->get($this->dataHashName, []);
-        }
-
-        foreach ($this->data as $data) {
-            $this->merge($data);
         }
 
         return $this->data;
@@ -155,12 +148,38 @@ class WizardDataStorage implements \IteratorAggregate
 
     /**
      * @param $data
+     * @return object
      */
     private function merge($data)
     {
         if(is_object($data)) {
-            $this->flusher->persist($data);
+            $metaDataClass = $this->flusher->getClassMetadata(get_class($data));
+
+            $assocFields = $metaDataClass->getAssociationMappings();
+
+            foreach ($assocFields as $assoc) {
+                $relatedEntities = $metaDataClass->reflFields[$assoc['fieldName']]->getValue($data);
+
+                if ($relatedEntities instanceof Collection) {
+                    if ($relatedEntities === $metaDataClass->reflFields[$assoc['fieldName']]->getValue($data)) {
+                        continue;
+                    }
+
+                    if ($relatedEntities instanceof PersistentCollection) {
+                        // Unwrap so that foreach() does not initialize
+                        $relatedEntities = $relatedEntities->unwrap();
+                    }
+
+                    foreach ($relatedEntities as $relatedEntity) {
+                        $metaDataClass->setFieldValue($data, $assoc['fieldName'], $this->merge($relatedEntity));
+                    }
+                } else if ($relatedEntities !== null) {
+                    $metaDataClass->setFieldValue($data, $assoc['fieldName'], $this->merge($relatedEntities));
+                }
+            }
         }
+
+        return $this->flusher->merge($data);
     }
 
     /**
@@ -180,7 +199,7 @@ class WizardDataStorage implements \IteratorAggregate
      */
     public function clear()
     {
-        $this->data = null;
+        $this->data = [];
         $this->saveData();
     }
 }

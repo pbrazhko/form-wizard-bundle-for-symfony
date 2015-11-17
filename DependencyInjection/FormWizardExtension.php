@@ -40,7 +40,6 @@ class FormWizardExtension extends Extension
         foreach ($wizards as $wizard => $properties) {
             $wizardConfigurationDefinition = new Definition(WizardConfiguration::class, [
                 $properties['steps'],
-                $properties['persist'],
                 new Reference('form.factory')
             ]);
 

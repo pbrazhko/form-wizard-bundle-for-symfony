@@ -13,26 +13,19 @@ use Symfony\Component\Form\FormFactory;
 
 class WizardConfiguration
 {
-    const PERSIST_TYPE_STEP_BY_STEP = 'stepByStep';
-    const PERSIST_TYPE_POST_PRESET = 'postPreset';
-
     private $steps = [];
 
-    private $persist;
 
     /**
      * WizardConfiguration constructor.
      * @param array $steps
-     * @param $persist
      * @param FormFactory $formFactory
      */
-    public function __construct(array $steps, $persist, FormFactory $formFactory)
+    public function __construct(array $steps, FormFactory $formFactory)
     {
         foreach ($steps as $name => $properties) {
             $this->steps[$name] = new WizardStep($name, $properties['type'], $properties['condition'], $formFactory);
         }
-
-        $this->persist = $persist;
     }
 
     /**
@@ -105,14 +98,6 @@ class WizardConfiguration
         $this->steps = $steps;
 
         return $this;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getPersist()
-    {
-        return $this->persist;
     }
 
     /**

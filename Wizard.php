@@ -125,22 +125,17 @@ class Wizard
 
         $dataName = null === ($dataType = $step->getDataType()) ? $step->getName() : $dataType;
 
-        $this->dataStorage->setData($dataName, $data);
         $step->setData($data);
 
-        if ($this->finished($stepName) || $this->configuration->getPersist() == WizardConfiguration::PERSIST_TYPE_STEP_BY_STEP) {
+        $this->eventDispatcher->dispatch(StepEvents::PRE_PERSIST_STEP_EVENT, new FormWizardEvent($this, $stepName));
 
-            $this->eventDispatcher->dispatch(StepEvents::PRE_PERSIST_STEP_EVENT, new FormWizardEvent($this, $stepName));
+        $this->dataStorage->flush($dataName, $data);
 
-            $this->dataStorage->flush();
+        $this->eventDispatcher->dispatch(StepEvents::POST_PERSIST_STEP_EVENT, new FormWizardEvent($this, $stepName));
 
-            $this->eventDispatcher->dispatch(StepEvents::POST_PERSIST_STEP_EVENT, new FormWizardEvent($this, $stepName));
-
-            if($this->finished($stepName)){
-
-                $this->eventDispatcher->dispatch(StepEvents::FLUSH_WIZARD_EVENT, new FormWizardEvent($this, $stepName));
-                $this->dataStorage->clear();
-            }
+        if ($this->finished($stepName)) {
+            $this->eventDispatcher->dispatch(StepEvents::FLUSH_WIZARD_EVENT, new FormWizardEvent($this, $stepName));
+            $this->dataStorage->clear();
         }
 
         return $this;
