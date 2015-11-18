@@ -47,7 +47,7 @@ class FormWizardExtension extends \Twig_Extension
     public function formWizard($wizardName, $step = null, $template = 'FormWizardBundle:Twig:wizard.html.twig')
     {
         if (!$this->container->has('cms.form_wizard.' . $wizardName)) {
-            throw new InvalidArgumentException(sprintf('Wizard %s not found!', $wizardName));
+            throw new InvalidArgumentException(sprintf('wizard %s not found!', $wizardName));
         }
 
         /**

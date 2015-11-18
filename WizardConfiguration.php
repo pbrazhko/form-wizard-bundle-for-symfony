@@ -24,7 +24,13 @@ class WizardConfiguration
     public function __construct(array $steps, FormFactory $formFactory)
     {
         foreach ($steps as $name => $properties) {
-            $this->steps[$name] = new WizardStep($name, $properties['type'], $properties['condition'], $formFactory);
+            $this->steps[$name] = new WizardStep(
+                $name,
+                $properties['type'],
+                $properties['condition'],
+                $properties['template'],
+                $formFactory
+            );
         }
     }
 
@@ -71,11 +77,7 @@ class WizardConfiguration
      */
     public function getNextStep($currentStepName = null)
     {
-        if (null === $currentStepName) {
-            $currentStep = $this->getFirstStep();
-        } else {
-            $currentStep = $this->getStep($currentStepName);
-        }
+        $currentStep = null === $currentStepName ? $this->getFirstStep() : $this->getStep($currentStepName);
 
         $nextStep = false;
 

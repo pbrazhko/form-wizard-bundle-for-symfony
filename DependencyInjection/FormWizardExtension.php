@@ -37,7 +37,7 @@ class FormWizardExtension extends Extension
 
     private function createWizards(ContainerBuilder $container, array $wizards)
     {
-        foreach ($wizards as $wizard => $properties) {
+        foreach ($wizards as $wizardName => $properties) {
             $wizardConfigurationDefinition = new Definition(WizardConfiguration::class, [
                 $properties['steps'],
                 new Reference('form.factory')
@@ -46,12 +46,13 @@ class FormWizardExtension extends Extension
             $wizardConfigurationDefinition->setPublic(false);
 
             $wizardDefinition = new Definition(Wizard::class, [
+                $wizardName,
                 $wizardConfigurationDefinition,
                 new Reference('event_dispatcher'),
-                new Reference(str_replace('@', '', $properties['flusher']))
+                new Reference(str_replace('@', '', $properties['entity_manager']))
             ]);
 
-            $container->setDefinition('cms.form_wizard.' . $wizard, $wizardDefinition);
+            $container->setDefinition('cms.form_wizard.' . $wizardName, $wizardDefinition);
         }
     }
 }

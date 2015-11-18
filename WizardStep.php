@@ -3,6 +3,7 @@ namespace CMS\FormWizardBundle;
 
 use Symfony\Component\Form\FormBuilder;
 use Symfony\Component\Form\FormFactory;
+use Symfony\Component\Form\FormInterface;
 
 /**
  * Created by PhpStorm.
@@ -28,17 +29,28 @@ class WizardStep
     private $condition;
 
     /**
+     * @var string | null
+     */
+    private $template;
+
+    /**
      * @var FormFactory
      */
     private $formFactory;
 
     /**
-     * @var
+     * @var FormInterface
      */
     private $form;
 
+    /**
+     * @var object
+     */
     private $data;
 
+    /**
+     * @var string
+     */
     private $dataClass;
 
     /**
@@ -46,10 +58,12 @@ class WizardStep
      * @param $name
      * @param $type
      * @param null $condition
+     * @param null $template
      * @param FormFactory $formFactory
      */
-    public function __construct($name, $type, $condition = null, FormFactory $formFactory)
+    public function __construct($name, $type, $condition = null, $template = null, FormFactory $formFactory)
     {
+        $this->template = $template;
         $this->formFactory = $formFactory;
         $this->name = $name;
         $this->type = $type;
@@ -134,6 +148,25 @@ class WizardStep
     }
 
     /**
+     * @return null|string
+     */
+    public function getTemplate()
+    {
+        return $this->template;
+    }
+
+    /**
+     * @param null|string $template
+     * @return $this
+     */
+    public function setTemplate($template)
+    {
+        $this->template = $template;
+
+        return $this;
+    }
+
+    /**
      * @param $data
      * @param array $options
      * @return \Symfony\Component\Form\Form|\Symfony\Component\Form\FormInterface
@@ -142,6 +175,10 @@ class WizardStep
     {
         if (null === $this->form) {
             $type = $this->getType();
+
+            array_merge($options, [
+                'validation_groups' => [$this->getName()]
+            ]);
 
             $this->form = $this->formFactory->create(new $type, $data, $options);
         }

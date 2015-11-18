@@ -14,8 +14,6 @@ use Symfony\Component\EventDispatcher\Event;
 
 class FormWizardEvent extends Event
 {
-    protected $stepName;
-
     protected $wizard;
 
     /**
@@ -35,13 +33,5 @@ class FormWizardEvent extends Event
     public function getWizard()
     {
         return $this->wizard;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getStepName()
-    {
-        return $this->stepName;
     }
 }
