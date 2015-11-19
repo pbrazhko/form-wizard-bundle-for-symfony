@@ -83,7 +83,7 @@ class WizardConfiguration
 
         foreach ($this->steps as $name => $step) {
             if ($name == $currentStep->getName()) {
-                $nextStep = next($this->steps);
+                $nextStep = current($this->steps);
                 break;
             }
         }

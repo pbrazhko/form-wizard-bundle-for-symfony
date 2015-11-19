@@ -176,7 +176,7 @@ class WizardStep
         if (null === $this->form) {
             $type = $this->getType();
 
-            array_merge($options, [
+            $options = array_merge($options, [
                 'validation_groups' => [$this->getName()]
             ]);
 

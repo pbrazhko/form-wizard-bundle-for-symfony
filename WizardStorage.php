@@ -74,7 +74,11 @@ class WizardStorage implements \IteratorAggregate
     public function getData($dataName, $default = null)
     {
         if (isset($this->data[$dataName])) {
-            return $this->data[$dataName];
+            $data = $this->data[$dataName];
+
+            $this->prepare($data);
+
+            return $data;
         }
 
         return $default;
@@ -106,39 +110,7 @@ class WizardStorage implements \IteratorAggregate
     {
         try {
             foreach ($this->data as $data) {
-                $metaDataClass = $this->entityManager->getClassMetadata(get_class($data));
-
-                $assocFields = $metaDataClass->getAssociationMappings();
-
-                foreach ($assocFields as $assoc) {
-                    $relatedEntities = $metaDataClass->reflFields[$assoc['fieldName']]->getValue($data);
-
-                    if ($relatedEntities instanceof Collection) {
-                        if ($relatedEntities === $metaDataClass->reflFields[$assoc['fieldName']]->getValue($data)) {
-                            continue;
-                        }
-
-                        if ($relatedEntities instanceof PersistentCollection) {
-                            // Unwrap so that foreach() does not initialize
-                            $relatedEntities = $relatedEntities->unwrap();
-                        }
-
-                        foreach ($relatedEntities as $relatedEntity) {
-                            $relatedEntitiesState = $this->entityManager->getUnitOfWork()->getEntityState($relatedEntities);
-
-                            if ($relatedEntitiesState === UnitOfWork::STATE_DETACHED) {
-                                $metaDataClass->setFieldValue($data, $assoc['fieldName'], $this->entityManager->merge($relatedEntity));
-                            }
-                        }
-                    } else if ($relatedEntities !== null) {
-                        $relatedEntitiesState = $this->entityManager->getUnitOfWork()->getEntityState($relatedEntities);
-
-                        if ($relatedEntitiesState === UnitOfWork::STATE_DETACHED) {
-                            $metaDataClass->setFieldValue($data, $assoc['fieldName'], $this->entityManager->merge($relatedEntities));
-                        }
-
-                    }
-                }
+                $this->prepare($data);
 
                 $this->entityManager->persist($data);
             }
@@ -147,6 +119,43 @@ class WizardStorage implements \IteratorAggregate
 
         } catch (ORMException $e) {
             $this->entityManager->rollback();
+        }
+    }
+
+    private function prepare($data)
+    {
+        $metaDataClass = $this->entityManager->getClassMetadata(get_class($data));
+
+        $assocFields = $metaDataClass->getAssociationMappings();
+
+        foreach ($assocFields as $assoc) {
+            $relatedEntities = $metaDataClass->reflFields[$assoc['fieldName']]->getValue($data);
+
+            if ($relatedEntities instanceof Collection) {
+                if ($relatedEntities === $metaDataClass->reflFields[$assoc['fieldName']]->getValue($data)) {
+                    continue;
+                }
+
+                if ($relatedEntities instanceof PersistentCollection) {
+                    // Unwrap so that foreach() does not initialize
+                    $relatedEntities = $relatedEntities->unwrap();
+                }
+
+                foreach ($relatedEntities as $relatedEntity) {
+                    $relatedEntitiesState = $this->entityManager->getUnitOfWork()->getEntityState($relatedEntities);
+
+                    if ($relatedEntitiesState === UnitOfWork::STATE_DETACHED) {
+                        $metaDataClass->setFieldValue($data, $assoc['fieldName'], $this->entityManager->merge($relatedEntity));
+                    }
+                }
+            } else if ($relatedEntities !== null) {
+                $relatedEntitiesState = $this->entityManager->getUnitOfWork()->getEntityState($relatedEntities);
+
+                if ($relatedEntitiesState === UnitOfWork::STATE_DETACHED) {
+                    $metaDataClass->setFieldValue($data, $assoc['fieldName'], $this->entityManager->merge($relatedEntities));
+                }
+
+            }
         }
     }
 
