@@ -16,6 +16,8 @@ class FormWizardEvent extends Event
 {
     protected $wizard;
 
+    protected $stepName;
+
     /**
      * PrePersistStep constructor.
      * @param Wizard $wizard
@@ -33,5 +35,23 @@ class FormWizardEvent extends Event
     public function getWizard()
     {
         return $this->wizard;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getStepName()
+    {
+        return $this->stepName;
+    }
+
+    /**
+     * @param mixed $stepName
+     * @return $this
+     */
+    public function setStepName($stepName)
+    {
+        $this->stepName = $stepName;
+        return $this;
     }
 }

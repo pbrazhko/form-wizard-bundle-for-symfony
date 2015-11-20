@@ -54,6 +54,11 @@ class WizardStep
     private $dataClass;
 
     /**
+     * @var array
+     */
+    private $variables = [];
+
+    /**
      * WizardStep constructor.
      * @param $name
      * @param $type
@@ -222,6 +227,37 @@ class WizardStep
         }
 
         return null;
+    }
+
+    /**
+     * @return array
+     */
+    public function getVariables()
+    {
+        return $this->variables;
+    }
+
+    /**
+     * @param array $variables
+     * @return $this
+     */
+    public function setVariables($variables)
+    {
+        $this->variables = $variables;
+
+        return $this;
+    }
+
+    /**
+     * @param $name
+     * @param $value
+     * @return $this
+     */
+    public function addVariable($name, $value)
+    {
+        $this->variables[$name] = $value;
+
+        return $this;
     }
 
     /**

@@ -89,6 +89,8 @@ class Wizard
             return $this->getForm($this->configuration->getNextStep($step->getName()), $data, $options);
         }
 
+        $this->eventDispatcher->dispatch(StepEvents::BUILD_STEP_FORM, new FormWizardEvent($this, $stepName));
+
         $form = $step->getForm($data, $options);
         $dataClass = $step->getDataType();
 
@@ -125,7 +127,12 @@ class Wizard
 
         $dataName = null === ($dataType = $step->getDataType()) ? $step->getName() : $dataType;
 
+        $this->eventDispatcher->dispatch(StepEvents::PRE_SET_DATA_STEP, new FormWizardEvent($this, $stepName));
+
         $this->storage->setData($dataName, $data);
+
+        $this->eventDispatcher->dispatch(StepEvents::POST_SET_DATA_STEP, new FormWizardEvent($this, $stepName));
+
         $step->setData($data);
 
         if ($this->finished($stepName)) {
